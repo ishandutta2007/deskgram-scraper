@@ -6,6 +6,7 @@ USER_STORIES = '17890626976041463'
 STORIES = '17873473675158481'
 
 BASE_URL = 'https://www.instagram.com'
+BASE_DESKGRAM_URL = 'https://www.deskgram.cc'
 LOGIN_URL = 'https://www.instagram.com/accounts/login/ajax/'
 ACCOUNT_PAGE = 'https://www.instagram.com/%s'
 MEDIA_LINK = 'https://www.instagram.com/p/%s'

@@ -7,7 +7,7 @@ import os
 from slugify import slugify
 import random
 from .session_manager import CookieSessionManager
-from .exception.instagram_auth_exception import InstagramAuthException
+# from .exception.instagram_auth_exception import DeskgramAuthException
 from .exception.instagram_exception import InstagramException
 from .exception.instagram_not_found_exception import InstagramNotFoundException
 from .model.account import Account
@@ -20,7 +20,7 @@ from .model.tag import Tag
 from . import endpoints
 from .two_step_verification.console_verification import ConsoleVerification
 
-class Instagram:
+class Deskgram:
     HTTP_NOT_FOUND = 404
     HTTP_OK = 200
     HTTP_FORBIDDEN = 403
@@ -37,9 +37,9 @@ class Instagram:
 
     def __init__(self, sleep_between_requests=0):
         self.__req = requests.session()
-        self.paging_time_limit_sec = Instagram.PAGING_TIME_LIMIT_SEC
-        self.paging_delay_minimum_microsec = Instagram.PAGING_DELAY_MINIMUM_MICROSEC
-        self.paging_delay_maximum_microsec = Instagram.PAGING_DELAY_MAXIMUM_MICROSEC
+        self.paging_time_limit_sec = Deskgram.PAGING_TIME_LIMIT_SEC
+        self.paging_delay_minimum_microsec = Deskgram.PAGING_DELAY_MINIMUM_MICROSEC
+        self.paging_delay_maximum_microsec = Deskgram.PAGING_DELAY_MAXIMUM_MICROSEC
 
         self.session_username = None
         self.session_password = None
@@ -56,9 +56,9 @@ class Instagram:
         param string password
         param null sessionFolder
 
-        return Instagram
+        return Deskgram
         """
-        Instagram.instance_cache = None
+        Deskgram.instance_cache = None
 
         if not session_folder:
             cwd = os.getcwd()
@@ -66,13 +66,13 @@ class Instagram:
 
         if isinstance(session_folder, str):
 
-            Instagram.instance_cache = CookieSessionManager(
+            Deskgram.instance_cache = CookieSessionManager(
                 session_folder, slugify(username) + '.txt')
 
         else:
-            Instagram.instance_cache = session_folder
+            Deskgram.instance_cache = session_folder
 
-        Instagram.instance_cache.empty_saved_cookies()
+        Deskgram.instance_cache.empty_saved_cookies()
 
 
         self.session_username = username
@@ -120,22 +120,22 @@ class Instagram:
             endpoints.get_account_json_private_info_link_by_account_id(
                 id), headers=self.generate_headers(self.user_session))
 
-        if Instagram.HTTP_NOT_FOUND == response.status_code:
-            raise InstagramNotFoundException(
+        if Deskgram.HTTP_NOT_FOUND == response.status_code:
+            raise DeskgramNotFoundException(
                 'Failed to fetch account with given id')
 
-        if Instagram.HTTP_OK != response.status_code:
-            raise InstagramException.default(response.text,
+        if Deskgram.HTTP_OK != response.status_code:
+            raise DeskgramException.default(response.text,
                                              response.status_code)
 
         json_response = response.json()
         if not json_response:
-            raise InstagramException('Response does not JSON')
+            raise DeskgramException('Response does not JSON')
 
         if json_response['status'] != 'ok':
             message = json_response['message'] if (
                     'message' in json_response.keys()) else 'Unknown Error'
-            raise InstagramException(message)
+            raise DeskgramException(message)
 
         return json_response['user']['username']
 
@@ -157,7 +157,7 @@ class Instagram:
 
             headers = {
                 'cookie': cookies,
-                'referer': endpoints.BASE_URL + '/',
+                'referer': endpoints.BASE_DESKGRAM_URL + '/',
                 'x-csrftoken': csrf
             }
 
@@ -186,7 +186,7 @@ class Instagram:
             try:
                 shared_data = self.__get_shared_data_from_page()
             except Exception as _:
-                raise InstagramException('Could not extract gis from page')
+                raise DeskgramException('Could not extract gis from page')
 
             if 'rhx_gis' in shared_data.keys():
                 self.rhx_gis = shared_data['rhx_gis']
@@ -200,13 +200,13 @@ class Instagram:
         time.sleep(self.sleep_between_requests)
         response = self.__req.get('https://www.instagram.com/web/__mid/')
 
-        if response.status_code != Instagram.HTTP_OK:
-            raise InstagramException.default(response.text,
+        if response.status_code != Deskgram.HTTP_OK:
+            raise DeskgramException.default(response.text,
                                              response.status_code)
 
         return response.text
 
-    def __get_shared_data_from_page(self, url=endpoints.BASE_URL):
+    def __get_shared_data_from_page(self, url=endpoints.BASE_DESKGRAM_URL):
         """
         :param url: the requested url
         :return: a dict extract from page
@@ -216,14 +216,14 @@ class Instagram:
         response = self.__req.get(url, headers=self.generate_headers(
             self.user_session))
 
-        if Instagram.HTTP_NOT_FOUND == response.status_code:
-            raise InstagramNotFoundException(f"Page {url} not found")
+        if Deskgram.HTTP_NOT_FOUND == response.status_code:
+            raise DeskgramNotFoundException(f"Page {url} not found")
 
-        if not Instagram.HTTP_OK == response.status_code:
-            raise InstagramException.default(response.text,
+        if not Deskgram.HTTP_OK == response.status_code:
+            raise DeskgramException.default(response.text,
                                              response.status_code)
 
-        return Instagram.extract_shared_data_from_body(response.text)
+        return Deskgram.extract_shared_data_from_body(response.text)
 
     @staticmethod
     def extract_shared_data_from_body(body):
@@ -248,12 +248,12 @@ class Instagram:
         time.sleep(self.sleep_between_requests)
         response = self.__req.get(endpoints.get_general_search_json_link(tag))
 
-        if Instagram.HTTP_NOT_FOUND == response.status_code:
-            raise InstagramNotFoundException(
+        if Deskgram.HTTP_NOT_FOUND == response.status_code:
+            raise DeskgramNotFoundException(
                 'Account with given username does not exist.')
 
-        if not Instagram.HTTP_OK == response.status_code:
-            raise InstagramException.default(response.text,
+        if not Deskgram.HTTP_OK == response.status_code:
+            raise DeskgramException.default(response.text,
                                              response.status_code)
 
         json_response = response.json()
@@ -261,11 +261,11 @@ class Instagram:
         try:
             status = json_response['status']
             if status != 'ok':
-                raise InstagramException(
+                raise DeskgramException(
                     'Response code is not equal 200. '
                     'Something went wrong. Please report issue.')
         except KeyError:
-            raise InstagramException('Response code is not equal 200. Something went wrong. Please report issue.')
+            raise DeskgramException('Response code is not equal 200. Something went wrong. Please report issue.')
 
         try:
             hashtags_raw = json_response['hashtags']
@@ -326,8 +326,8 @@ class Instagram:
                 endpoints.get_account_medias_json_link(variables),
                 headers=headers)
 
-            if not Instagram.HTTP_OK == response.status_code:
-                raise InstagramException.default(response.text,
+            if not Deskgram.HTTP_OK == response.status_code:
+                raise DeskgramException.default(response.text,
                                                  response.status_code)
 
             arr = json.loads(response.text)
@@ -383,19 +383,19 @@ class Instagram:
         response = self.__req.get(url, headers=self.generate_headers(
             self.user_session))
 
-        if Instagram.HTTP_NOT_FOUND == response.status_code:
-            raise InstagramNotFoundException(
+        if Deskgram.HTTP_NOT_FOUND == response.status_code:
+            raise DeskgramNotFoundException(
                 'Media with given code does not exist or account is private.')
 
-        if Instagram.HTTP_OK != response.status_code:
-            raise InstagramException.default(response.text,
+        if Deskgram.HTTP_OK != response.status_code:
+            raise DeskgramException.default(response.text,
                                              response.status_code)
 
         media_array = response.json()
         try:
             media_in_json = media_array['graphql']['shortcode_media']
         except KeyError:
-            raise InstagramException('Media with this code does not exist')
+            raise DeskgramException('Media with this code does not exist')
 
         return Media(media_in_json)
 
@@ -412,12 +412,12 @@ class Instagram:
                                   headers=self.generate_headers(
                                       self.user_session))
 
-        if Instagram.HTTP_NOT_FOUND == response.status_code:
-            raise InstagramNotFoundException(
+        if Deskgram.HTTP_NOT_FOUND == response.status_code:
+            raise DeskgramNotFoundException(
                 'Account with given username does not exist.')
 
-        if Instagram.HTTP_OK != response.status_code:
-            raise InstagramException.default(response.text,
+        if Deskgram.HTTP_OK != response.status_code:
+            raise DeskgramException.default(response.text,
                                              response.status_code)
 
         user_array = response.json()
@@ -425,7 +425,7 @@ class Instagram:
         try:
             user = user_array['graphql']['user']
         except KeyError:
-            raise InstagramNotFoundException(
+            raise DeskgramNotFoundException(
                 'Account with this username does not exist')
 
         try:
@@ -462,8 +462,8 @@ class Instagram:
                 endpoints.get_medias_json_by_tag_link(tag, max_id),
                 headers=self.generate_headers(self.user_session))
 
-            if response.status_code != Instagram.HTTP_OK:
-                raise InstagramException.default(response.text,
+            if response.status_code != Deskgram.HTTP_OK:
+                raise DeskgramException.default(response.text,
                                                  response.status_code)
 
             arr = response.json()
@@ -521,8 +521,8 @@ class Instagram:
                     facebook_location_id, max_id),
                 headers=self.generate_headers(self.user_session))
 
-            if response.status_code != Instagram.HTTP_OK:
-                raise InstagramException.default(response.text,
+            if response.status_code != Deskgram.HTTP_OK:
+                raise DeskgramException.default(response.text,
                                                  response.status_code)
 
             arr = response.json()
@@ -560,12 +560,12 @@ class Instagram:
             endpoints.get_medias_json_by_tag_link(tag_name, ''),
             headers=self.generate_headers(self.user_session))
 
-        if response.status_code == Instagram.HTTP_NOT_FOUND:
-            raise InstagramNotFoundException(
+        if response.status_code == Deskgram.HTTP_NOT_FOUND:
+            raise DeskgramNotFoundException(
                 'Account with given username does not exist.')
 
-        if response.status_code is not Instagram.HTTP_OK:
-            raise InstagramException.default(response.text,
+        if response.status_code is not Deskgram.HTTP_OK:
+            raise DeskgramException.default(response.text,
                                              response.status_code)
 
         json_response = response.json()
@@ -589,12 +589,12 @@ class Instagram:
         response = self.__req.get(
             endpoints.get_medias_json_by_location_id_link(facebook_location_id),
             headers=self.generate_headers(self.user_session))
-        if response.status_code == Instagram.HTTP_NOT_FOUND:
-            raise InstagramNotFoundException(
+        if response.status_code == Deskgram.HTTP_NOT_FOUND:
+            raise DeskgramNotFoundException(
                 "Location with this id doesn't exist")
 
-        if response.status_code != Instagram.HTTP_OK:
-            raise InstagramException.default(response.text,
+        if response.status_code != Deskgram.HTTP_OK:
+            raise DeskgramException.default(response.text,
                                              response.status_code)
 
         json_response = response.json()
@@ -638,8 +638,8 @@ class Instagram:
                                           self.__generate_gis_token(variables))
         )
 
-        if not Instagram.HTTP_OK == response.status_code:
-            raise InstagramException.default(response.text,
+        if not Deskgram.HTTP_OK == response.status_code:
+            raise DeskgramException.default(response.text,
                                              response.status_code)
 
         arr = response.json()
@@ -687,8 +687,8 @@ class Instagram:
             endpoints.get_medias_json_by_tag_link(tag, max_id),
             headers=self.generate_headers(self.user_session))
 
-        if response.status_code != Instagram.HTTP_OK:
-            raise InstagramException.default(response.text,
+        if response.status_code != Deskgram.HTTP_OK:
+            raise DeskgramException.default(response.text,
                                              response.status_code)
 
         arr = response.json()
@@ -732,12 +732,12 @@ class Instagram:
             endpoints.get_medias_json_by_location_id_link(facebook_location_id),
             headers=self.generate_headers(self.user_session))
 
-        if response.status_code == Instagram.HTTP_NOT_FOUND:
-            raise InstagramNotFoundException(
+        if response.status_code == Deskgram.HTTP_NOT_FOUND:
+            raise DeskgramNotFoundException(
                 'Location with this id doesn\'t exist')
 
-        if response.status_code != Instagram.HTTP_OK:
-            raise InstagramException.default(response.text,
+        if response.status_code != Deskgram.HTTP_OK:
+            raise DeskgramException.default(response.text,
                                              response.status_code)
 
         json_response = response.json()
@@ -784,8 +784,8 @@ class Instagram:
                 endpoints.get_last_likes_by_code(variables),
                 headers=self.generate_headers(self.user_session))
 
-            if not response.status_code == Instagram.HTTP_OK:
-                raise InstagramException.default(response.text,response.status_code)
+            if not response.status_code == Deskgram.HTTP_OK:
+                raise DeskgramException.default(response.text,response.status_code)
 
             jsonResponse = response.json()
 
@@ -839,7 +839,7 @@ class Instagram:
         next_page = end_cursor
 
         if count < page_size:
-            raise InstagramException(
+            raise DeskgramException(
                 'Count must be greater than or equal to page size.')
 
         while True:
@@ -857,8 +857,8 @@ class Instagram:
                 endpoints.get_followers_json_link(variables),
                 headers=headers)
 
-            if not response.status_code == Instagram.HTTP_OK:
-                raise InstagramException.default(response.text,
+            if not response.status_code == Deskgram.HTTP_OK:
+                raise DeskgramException.default(response.text,
                                                  response.status_code)
 
             jsonResponse = response.json()
@@ -869,10 +869,10 @@ class Instagram:
             edgesArray = jsonResponse['data']['user']['edge_followed_by'][
                 'edges']
             if len(edgesArray) == 0:
-                InstagramException(
+                DeskgramException(
                     f'Failed to get followers of account id {account_id}.'
                     f' The account is private.',
-                    Instagram.HTTP_FORBIDDEN)
+                    Deskgram.HTTP_FORBIDDEN)
 
             pageInfo = jsonResponse['data']['user']['edge_followed_by'][
                 'page_info']
@@ -929,7 +929,7 @@ class Instagram:
         next_page = end_cursor
 
         if count < page_size:
-            raise InstagramException('Count must be greater than or equal to page size.')
+            raise DeskgramException('Count must be greater than or equal to page size.')
 
         while True:
 
@@ -946,8 +946,8 @@ class Instagram:
                 endpoints.get_following_json_link(variables),
                 headers=headers)
 
-            if not response.status_code == Instagram.HTTP_OK:
-                raise InstagramException.default(response.text,response.status_code)
+            if not response.status_code == Deskgram.HTTP_OK:
+                raise DeskgramException.default(response.text,response.status_code)
 
             jsonResponse = response.json()
             if jsonResponse['data']['user']['edge_follow']['count'] == 0:
@@ -957,10 +957,10 @@ class Instagram:
                 'edges']
 
             if len(edgesArray) == 0:
-                raise InstagramException(
+                raise DeskgramException(
                     f'Failed to get follows of account id {account_id}.'
                     f' The account is private.',
-                    Instagram.HTTP_FORBIDDEN)
+                    Deskgram.HTTP_FORBIDDEN)
 
             pageInfo = jsonResponse['data']['user']['edge_follow']['page_info']
             if pageInfo['has_next_page']:
@@ -1017,8 +1017,8 @@ class Instagram:
 
         while has_previous and index < count:
             number_of_comments_to_receive = 0
-            if count - index > Instagram.MAX_COMMENTS_PER_REQUEST:
-                number_of_comments_to_receive = Instagram.MAX_COMMENTS_PER_REQUEST
+            if count - index > Deskgram.MAX_COMMENTS_PER_REQUEST:
+                number_of_comments_to_receive = Deskgram.MAX_COMMENTS_PER_REQUEST
             else:
                 number_of_comments_to_receive = count - index
 
@@ -1037,8 +1037,8 @@ class Instagram:
                                           self.user_session,
                                           self.__generate_gis_token(variables)))
 
-            if not response.status_code == Instagram.HTTP_OK:
-                raise InstagramException.default(response.text,
+            if not response.status_code == Deskgram.HTTP_OK:
+                raise DeskgramException.default(response.text,
                                                  response.status_code)
 
             jsonResponse = response.json()
@@ -1076,18 +1076,18 @@ class Instagram:
         response = self.__req.get(endpoints.get_account_page_link(
             username), headers=self.generate_headers(self.user_session))
 
-        if Instagram.HTTP_NOT_FOUND == response.status_code:
-            raise InstagramNotFoundException(
+        if Deskgram.HTTP_NOT_FOUND == response.status_code:
+            raise DeskgramNotFoundException(
                 'Account with given username does not exist.')
 
-        if Instagram.HTTP_OK != response.status_code:
-            raise InstagramException.default(response.text,
+        if Deskgram.HTTP_OK != response.status_code:
+            raise DeskgramException.default(response.text,
                                              response.status_code)
 
-        user_array = Instagram.extract_shared_data_from_body(response.text)
+        user_array = Deskgram.extract_shared_data_from_body(response.text)
 
         if user_array['entry_data']['ProfilePage'][0]['graphql']['user'] is None:
-            raise InstagramNotFoundException(
+            raise DeskgramNotFoundException(
                 'Account with this username does not exist')
 
         return Account(
@@ -1106,8 +1106,8 @@ class Instagram:
                                       headers=self.generate_headers(
                                           self.user_session))
 
-            if not Instagram.HTTP_OK == response.status_code:
-                raise InstagramException.default(response.text,
+            if not Deskgram.HTTP_OK == response.status_code:
+                raise DeskgramException.default(response.text,
                                                  response.status_code)
 
             json_response = response.json()
@@ -1129,8 +1129,8 @@ class Instagram:
                                   headers=self.generate_headers(
                                       self.user_session))
 
-        if not Instagram.HTTP_OK == response.status_code:
-            raise InstagramException.default(response.text,
+        if not Deskgram.HTTP_OK == response.status_code:
+            raise DeskgramException.default(response.text,
                                              response.status_code)
 
         json_response = response.json()
@@ -1164,12 +1164,12 @@ class Instagram:
             endpoints.get_general_search_json_link(username),
             headers=self.generate_headers(self.user_session))
 
-        if Instagram.HTTP_NOT_FOUND == response.status_code:
-            raise InstagramNotFoundException(
+        if Deskgram.HTTP_NOT_FOUND == response.status_code:
+            raise DeskgramNotFoundException(
                 'Account with given username does not exist.')
 
-        if not Instagram.HTTP_OK == response.status_code:
-            raise InstagramException.default(response.text,
+        if not Deskgram.HTTP_OK == response.status_code:
+            raise DeskgramException.default(response.text,
                                              response.status_code)
 
         json_response = response.json()
@@ -1177,11 +1177,11 @@ class Instagram:
         try:
             status = json_response['status']
             if not status == 'ok':
-                raise InstagramException(
+                raise DeskgramException(
                     'Response code is not equal 200.'
                     ' Something went wrong. Please report issue.')
         except KeyError:
-            raise InstagramException(
+            raise DeskgramException(
                 'Response code is not equal 200.'
                 ' Something went wrong. Please report issue.')
 
@@ -1210,8 +1210,8 @@ class Instagram:
         response = self.__req.get(url, headers=self.generate_headers(
             self.user_session))
 
-        if not Instagram.HTTP_OK == response.status_code:
-            raise InstagramException.default(response.text,
+        if not Deskgram.HTTP_OK == response.status_code:
+            raise DeskgramException.default(response.text,
                                              response.status_code)
 
         json_response = response.json()
@@ -1251,16 +1251,16 @@ class Instagram:
 
         headers = {
             'cookie': f"ig_cb=1; csrftoken={csrf_token}; sessionid={session_id};",
-            'referer': endpoints.BASE_URL + '/',
+            'referer': endpoints.BASE_DESKGRAM_URL + '/',
             'x-csrftoken': csrf_token,
             'X-CSRFToken': csrf_token,
             'user-agent': self.user_agent,
         }
 
         time.sleep(self.sleep_between_requests)
-        response = self.__req.get(endpoints.BASE_URL, headers=headers)
+        response = self.__req.get(endpoints.BASE_DESKGRAM_URL, headers=headers)
 
-        if not response.status_code == Instagram.HTTP_OK:
+        if not response.status_code == Deskgram.HTTP_OK:
             return False
 
         cookies = response.cookies.get_dict()
@@ -1277,74 +1277,74 @@ class Instagram:
         :return: headers dict
         """
         if self.session_username is None or self.session_password is None:
-            raise InstagramAuthException("User credentials not provided")
+            raise DeskgramAuthException("User credentials not provided")
 
         if two_step_verificator:
             two_step_verificator = ConsoleVerification()
 
         session = json.loads(
-            Instagram.instance_cache.get_saved_cookies()) if Instagram.instance_cache.get_saved_cookies() != None else None
+            Deskgram.instance_cache.get_saved_cookies()) if Deskgram.instance_cache.get_saved_cookies() != None else None
 
-        if force or not self.is_logged_in(session):
-            time.sleep(self.sleep_between_requests)
-            response = self.__req.get(endpoints.BASE_URL)
-            if not response.status_code == Instagram.HTTP_OK:
-                raise InstagramException.default(response.text,
-                                                 response.status_code)
+        # if force or not self.is_logged_in(session):
+        time.sleep(self.sleep_between_requests)
+        response = self.__req.get(endpoints.BASE_DESKGRAM_URL)
+        if not response.status_code == Deskgram.HTTP_OK:
+            raise DeskgramException.default(response.text,
+                                             response.status_code)
 
-            match = re.findall(r'"csrf_token":"(.*?)"', response.text)
+        match = re.findall(r'"csrf_token":"(.*?)"', response.text)
 
-            if len(match) > 0:
-                csrfToken = match[0]
+        if len(match) > 0:
+            csrfToken = match[0]
 
-            cookies = response.cookies.get_dict()
+        cookies = response.cookies.get_dict()
 
-            # cookies['mid'] doesnt work at the moment so fetch it with function
-            mid = self.__get_mid()
+        # cookies['mid'] doesnt work at the moment so fetch it with function
+        mid = self.__get_mid()
 
-            headers = {
-                'cookie': f"ig_cb=1; csrftoken={csrfToken}; mid={mid};",
-                'referer': endpoints.BASE_URL + '/',
-                'x-csrftoken': csrfToken,
-                'X-CSRFToken': csrfToken,
-                'user-agent': self.user_agent,
-            }
-            payload = {'username': self.session_username,
-                       'password': self.session_password}
-            response = self.__req.post(endpoints.LOGIN_URL, data=payload,
-                                       headers=headers)
+        headers = {
+            'cookie': f"ig_cb=1; csrftoken={csrfToken}; mid={mid};",
+            'referer': endpoints.BASE_DESKGRAM_URL + '/',
+            'x-csrftoken': csrfToken,
+            'X-CSRFToken': csrfToken,
+            'user-agent': self.user_agent,
+        }
+        payload = {'username': self.session_username,
+                   'password': self.session_password}
+        response = self.__req.post(endpoints.LOGIN_URL, data=payload,
+                                   headers=headers)
 
-            if not response.status_code == Instagram.HTTP_OK:
-                if (
-                        response.status_code == Instagram.HTTP_BAD_REQUEST
-                        and response.text is not None
-                        and response.json()['message'] == 'checkpoint_required'
-                        and two_step_verificator is not None):
-                    response = self.__verify_two_step(response, cookies,
-                                                      two_step_verificator)
-                    print('checkpoint required')
+        if not response.status_code == Deskgram.HTTP_OK:
+            if (
+                    response.status_code == Deskgram.HTTP_BAD_REQUEST
+                    and response.text is not None
+                    and response.json()['message'] == 'checkpoint_required'
+                    and two_step_verificator is not None):
+                response = self.__verify_two_step(response, cookies,
+                                                  two_step_verificator)
+                print('checkpoint required')
 
-                elif response.status_code is not None and response.text is not None:
-                    raise InstagramAuthException(
-                        f'Response code is {response.status_code}. Body: {response.text} Something went wrong. Please report issue.',
-                        response.status_code)
-                else:
-                    raise InstagramAuthException(
-                        'Something went wrong. Please report issue.',
-                        response.status_code)
+            elif response.status_code is not None and response.text is not None:
+                raise DeskgramAuthException(
+                    f'Response code is {response.status_code}. Body: {response.text} Something went wrong. Please report issue.',
+                    response.status_code)
+            else:
+                raise DeskgramAuthException(
+                    'Something went wrong. Please report issue.',
+                    response.status_code)
 
-            if not response.json()['authenticated']:
-                raise InstagramAuthException('User credentials are wrong.')
+        if not response.json()['authenticated']:
+            raise DeskgramAuthException('User credentials are wrong.')
 
-            cookies = response.cookies.get_dict()
+        cookies = response.cookies.get_dict()
 
-            cookies['mid'] = mid
-            Instagram.instance_cache.set_saved_cookies(json.dumps(cookies, separators=(',', ':')))
+        cookies['mid'] = mid
+        Deskgram.instance_cache.set_saved_cookies(json.dumps(cookies, separators=(',', ':')))
 
-            self.user_session = cookies
+        #     self.user_session = cookies
 
-        else:
-            self.user_session = session
+        # else:
+        #     self.user_session = session
 
         return self.generate_headers(self.user_session)
 
@@ -1369,11 +1369,11 @@ class Instagram:
             'user-agent': self.user_agent,
         }
 
-        url = endpoints.BASE_URL + response.json()['checkpoint_url']
+        url = endpoints.BASE_DESKGRAM_URL + response.json()['checkpoint_url']
 
         time.sleep(self.sleep_between_requests)
         response = self.__req.get(url, headers=headers)
-        data = Instagram.extract_shared_data_from_body(response.text)
+        data = Deskgram.extract_shared_data_from_body(response.text)
 
         if data is not None:
             try:
@@ -1408,7 +1408,7 @@ class Instagram:
                                            headers=headers)
 
         if len(re.findall('name="security_code"', response.text)) <= 0:
-            raise InstagramAuthException(
+            raise DeskgramAuthException(
                 'Something went wrong when try '
                 'two step verification. Please report issue.',
                 response.status_code)
@@ -1421,9 +1421,9 @@ class Instagram:
             'security_code': security_code,
         }
         response = self.__req.post(url, data=post_data, headers=headers)
-        if not response.status_code == Instagram.HTTP_OK \
+        if not response.status_code == Deskgram.HTTP_OK \
                 or 'Please check the code we sent you and try again' in response.text:
-            raise InstagramAuthException(
+            raise DeskgramAuthException(
                 'Something went wrong when try two step'
                 ' verification and enter security code. Please report issue.',
                 response.status_code)
@@ -1449,15 +1449,15 @@ class Instagram:
                                    data=body, headers=self.generate_headers(
                 self.user_session))
 
-        if not Instagram.HTTP_OK == response.status_code:
-            raise InstagramException.default(response.text,
+        if not Deskgram.HTTP_OK == response.status_code:
+            raise DeskgramException.default(response.text,
                                              response.status_code)
 
         json_response = response.json()
 
         if json_response['status'] != 'ok':
             status = json_response['status']
-            raise InstagramException(
+            raise DeskgramException(
                 f'Response status is {status}. '
                 f'Body: {response.text} Something went wrong.'
                 f' Please report issue.',
@@ -1480,15 +1480,15 @@ class Instagram:
             endpoints.get_delete_comment_url(media_id, comment_id),
             headers=self.generate_headers(self.user_session))
 
-        if not Instagram.HTTP_OK == response.status_code:
-            raise InstagramException.default(response.text,
+        if not Deskgram.HTTP_OK == response.status_code:
+            raise DeskgramException.default(response.text,
                                              response.status_code)
 
         json_response = response.json()
 
         if json_response['status'] != 'ok':
             status = json_response['status']
-            raise InstagramException(
+            raise DeskgramException(
                 f'Response status is {status}. '
                 f'Body: {response.text} Something went wrong.'
                 f' Please report issue.',
@@ -1504,15 +1504,15 @@ class Instagram:
                                    headers=self.generate_headers(
                                        self.user_session))
 
-        if not Instagram.HTTP_OK == response.status_code:
-            raise InstagramException.default(response.text,
+        if not Deskgram.HTTP_OK == response.status_code:
+            raise DeskgramException.default(response.text,
                                              response.status_code)
 
         json_response = response.json()
 
         if json_response['status'] != 'ok':
             status = json_response['status']
-            raise InstagramException(
+            raise DeskgramException(
                 f'Response status is {status}. '
                 f'Body: {response.text} Something went wrong.'
                 f' Please report issue.',
@@ -1528,15 +1528,15 @@ class Instagram:
                                    headers=self.generate_headers(
                                        self.user_session))
 
-        if not Instagram.HTTP_OK == response.status_code:
-            raise InstagramException.default(response.text,
+        if not Deskgram.HTTP_OK == response.status_code:
+            raise DeskgramException.default(response.text,
                                              response.status_code)
 
         json_response = response.json()
 
         if json_response['status'] != 'ok':
             status = json_response['status']
-            raise InstagramException(
+            raise DeskgramException(
                 f'Response status is {status}. '
                 f'Body: {response.text} Something went wrong.'
                 f' Please report issue.',
@@ -1554,10 +1554,10 @@ class Instagram:
                 follow = self.__req.post(url,
                                          headers=self.generate_headers(
                                              self.user_session))
-                if follow.status_code == Instagram.HTTP_OK:
+                if follow.status_code == Deskgram.HTTP_OK:
                     return True
             except:
-                raise InstagramException("Except on follow!")
+                raise DeskgramException("Except on follow!")
         return False
 
     def unfollow(self, user_id):
@@ -1569,9 +1569,9 @@ class Instagram:
             url_unfollow = endpoints.get_unfollow_url(user_id)
             try:
                 unfollow = self.__req.post(url_unfollow)
-                if unfollow.status_code == Instagram.HTTP_OK:
+                if unfollow.status_code == Deskgram.HTTP_OK:
                     return unfollow
             except:
-                raise InstagramException("Exept on unfollow!")
+                raise DeskgramException("Exept on unfollow!")
         return False
 
